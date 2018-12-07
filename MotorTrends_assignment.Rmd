@@ -1,0 +1,112 @@
+---
+title: "Is Manual or Automatic Transmission better for Miles per Gallon?"
+author: "ETaylor"
+date: "7 December 2017"
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
+---
+
+##Executive Summary
+
+This report looks at a data set of a collection of cars, it explores the relationship between a set of variables and miles per gallon (MPG) (outcome). This report determines that the Manual transmission type is better for MPG. Manual transmission is shown to increase the MPG by a factor of 1.8 compared to cars with an automatic transmission.
+
+## Exploratory Data Analysis
+
+This report uses the Motor Trend Car Road Tests (mtcars) data set found in R's library "datasets". It is a data frame with 32 observations (different cars) on 11 variables.  The following gives an excerpt of the original data set.
+
+```{r, echo= FALSE, warning=FALSE }
+library(datasets)
+library(ggplot2)
+data(mtcars)
+dim(mtcars)
+head(mtcars)
+```
+For this report we are most interested in the variables; Miles/(US) gallon (given as mpg) and Transmission (given as am, 0 = automatic, 1 = manual), however other variables will also be given. In order to perform this initial exploratory analysis some variables were converted from numeric to factor variables. 
+```{r, include= FALSE }
+mtcars$am<-factor(mtcars$am)
+mtcars$cyl<-factor(mtcars$cyl)
+mtcars$vs<-factor(mtcars$vs)
+mtcars$gear<-factor(mtcars$gear)
+mtcars$carb<-factor(mtcars$carb)
+```
+A boxplot and a pairs plot were generated (see Appendix).  The boxplot shows that there is little overlap in the mpgs recorded for Automatic and manual vehicles.  The automatic vehicles have a lower mpg with a mean of `r signif(mean(mtcars$mpg[mtcars$am==0]),3)` compared to the manual vehicles which have a higher mpg with a mean of `r signif(mean(mtcars$mpg[mtcars$am==1]),3)`. The pairs plot gives a quick comparison of all variables. Looking at plots of each variable against MPG, several variables including;  Number of cylinders (cyl), V/S (vs) and Weight (1000lbs) (wt) indicate they are perhaps correlated to some extent. Linear models in the regression anaysis will help quantify this. 
+
+##Inference
+
+```{r, echo= FALSE }
+#subset automatic transition cars
+mpgA<-subset(mtcars$mpg, mtcars$am==0)
+#subset manual transition cars
+mpgM<-subset(mtcars$mpg, mtcars$am==1)
+#two group t-test
+ttest<-t.test(mpgM,mpgA, var.equal=TRUE)
+
+```
+Given a null hypothesis that automatic and manual transmission cars are from the same population (assuming a Normal distribution) a two group t-test can be conducted.  The p-value for a t-test comparing MPG for Automatic and Manual cars assuming equal variance is `r signif(ttest$p.value,3)` as a proportion to 3 decimal places.  It is therefore clear that the null hypothesis is rejected and the automatic and manual transission cars are from two different populations.
+
+##Linear regression model
+
+First we can fit model to MPG based on all predictors (i.e. all the other variables in the mtdata set).  The adjusted R-squared value is 0.779, meaning this model can explain approximately 78% of the variance of MPG.  The coefficients indicate that weight (wt) has the biggest effect on MPG.  This full model estimates an expected 4.52% decrease in MPG for every 1% increase in percentage weight (holding the remaining variables constant). However looking at the p-values none of the coefficients in this model have a significance within the 0.05 level.  
+```{r, include = FALSE }
+linreg_all<-lm(mpg ~ ., mtcars)
+step_linreg <- step(linreg_all)
+```
+Next, the step function in R is used to find the best model with fewer predictors (find a summary given in Appendix).  It finds that a model only considering the predictors, cylinders (cyl), weight (wt), horse power (hp) and transmission type (am) gives an adjusted R-squared value of 0.8401.  Here the model estimates an expected 2.50% decrease in MPG for every 1% increase in weight (i.e. per 1000lbs) (holding hp, cyl and am constant), with a p-value that is significant.  A manual car is expected to increase MPG by a factor of 1.8 (holding wt, hp and cyl constant).  If the number of cylinders, cyl, increases from 4 to 6 to 8 MPG will decrease by factor of 3 and 2.2 respectively (holding hp, wt and am constant).
+
+
+###Residuals and Diagnostics
+
+To evaluate the fit and residuals of the linear model generated,  a series of four diagnostic plots are made (see Appendix).  Residuals vs Fitted plots the ordinary residuals against fitted values. Here the points appear randomly distributed.  This demonstrates that there is no pattern or particular heteroskedasticity. 
+
+The Scale-Location plot gives standardized residuals against fitted values, similar to the residual plot, it is used to detect patterns in residuals.  Again no particular patern is identified indicating constant variance. 
+
+The normal Q-Q plot is used to evaluate normality of the errors.  Here the points fall along the line demonstrating the errors are close to normality.
+
+Lastly, Residuals vs Leverage plots cooks distances highlighting any points that have substantial influence on the regression model. Here a few outliers can be seen away from the main cluster of data that could be further investigated.
+
+
+ 
+##Conclusions
+
+From a linear regression model of mpg considering the predictors, cylinders (cyl), weight (wt), horse power (hp) and transmission type (am), it can be concluded that:
+
+* Manual Cars are better than Automatic cars with respect to MPG.
+* Cars with Manual transmission increase MPG by a factor of 1.8.
+* For each 1000lb increase in weight (wt), MPG will decrease by 2.5%
+* MPG will decrease by factor of 3 for a 6-cylinder car and by a factor of 2.2 for an 8-cylinder car.
+* There is only a negligible decrease in MPG for every 1% increase in horse power.
+
+
+##Appendix : Additional Figures
+###1. Boxplot comparing MPGs to Transmission type (Automatic and Manual cars).
+
+```{r}
+# boxplot am vs mpg
+p <- ggplot(mtcars, aes(x=am, y=mpg, fill = am)) + 
+  geom_boxplot()+
+        labs(title="Plot of Miles per US Gallon (MPG) by Transmission type",x="Transmission type (Automatic = 0, Manual = 1)", y = "MPG")
+p
+```
+
+###2.Pairs plot of all variables in the mtcars data set.
+
+```{r}
+pairs(mtcars, panel=panel.smooth, main="Pair wise plot of mtcars data")
+```
+
+###3. Summary of full model (including all variables as predictors) and the best model found by the step function
+
+```{r, echo = FALSE }
+summary(linreg_all)
+summary(step_linreg)
+step_linreg$anova
+```
+
+###4. Diagnostic plots
+
+```{r, echo = FALSE}
+par(mfrow = c(2, 2))
+plot(step_linreg)
+```
